@@ -34,8 +34,8 @@ debug:
 
 # Rule to compile the 64-bit test application, linking it against lib64/libmalloc.so
 $(TEST_APP): $(TEST_APP).c lib64/libmalloc.so
-	$(CC) $(CFLAGS) -o $@ $< -Llib64 -lmalloc
 	$(CC) -o $(TEST_APP) -I ~pn-cs453/Given/Asgn1/include -L ~pn-cs453/Given/Asgn1/lib64 $(TEST_APP).c -lpp
+	$(CC) $(CFLAGS) -o $@ $< -Llib64 -lmalloc
 	./$(TEST_APP)
 
 # Clean target should also remove test artifacts and disable debug malloc
