@@ -1,5 +1,7 @@
-make
-
-
+To run program:
+1. make or make intel-all
+2. make link -> exports library path
+3. make debug -> sets DEBUG_MALLOC
+4. make clean -> removes all objects and unsets DEBUG_MALLOC
 Shortened some variable names and comments to meet the less than 80 
 chars per line coding standard. 

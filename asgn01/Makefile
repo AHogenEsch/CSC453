@@ -28,19 +28,16 @@ link:
 	LD_LIBRARY_PATH=$(LIB_PATH)
 	export LD_LIBRARY_PATH
 
-
+debug:
+	DEBUG_MALLOC=1
+	export DEBUG_MALLOC
 # Rule to compile the 64-bit test application, linking it against lib64/libmalloc.so
 $(TEST_APP): tryme.c lib64/libmalloc.so
 	$(CC) $(CFLAGS) -o $@ $< -Llib64 -lmalloc
 	./$(TEST_APP)
 
-# Target to run the test: depends on the test app being built and sets the library path
-test: $(TEST_APP)
-	@echo "--- Running 64-bit Malloc Tests ---"
-	@echo "Setting LD_LIBRARY_PATH to lib64..."
-	LD_LIBRARY_PATH=lib64:$$LD_LIBRARY_PATH ./$(TEST_APP)
-
-# Clean target should also remove test artifacts
+# Clean target should also remove test artifacts and disable debug malloc
 clean:
 	rm -f lib/libmalloc.so lib64/libmalloc.so malloc32.o malloc64.o $(TEST_APP)
+	unset DEBUG_MALLOC
 	rmdir lib lib64 2>/dev/null || true
