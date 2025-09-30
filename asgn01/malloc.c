@@ -71,11 +71,12 @@ void *malloc(size_t size) {
     while (current != NULL) {
         // search for a free block that is large enough.
         if (current->is_free && current->size >= size) {
-            // check if the remaining space is large enough to create a new free block.
+            // check if the  space is large enough to create a new free block.
             if (current->size >= size + PADDED_HEADER_SIZE + ALGN) {
                 // There's enough space, now split the block.
                 // pointer arithmetic to calculate new block address
-                Header *new_block = (Header *)((char *)current + PADDED_HEADER_SIZE + size);
+                char *chrptr =(char *)current + PADDED_HEADER_SIZE + size;
+                Header *new_block = (Header *)chrptr;
 
                 // Find the new size using the requested size and the size of a header 
                 new_block->size = current->size - size - PADDED_HEADER_SIZE;
@@ -214,12 +215,13 @@ void *calloc(size_t nmemb, size_t size) {
 
 
 void *realloc(void *ptr, size_t size) {
-    // Edge Case 1: If ptr is NULL, realloc behaves like malloc(size)
+    // Two Edge Cases
+    // 1: If ptr is NULL, realloc behaves like malloc(size)
     if (ptr == NULL) {
         return malloc(size);
     }
 
-    // Edge Case 2: If size is 0 (and ptr is not NULL), realloc behaves like free(ptr)
+    // 2: If size is 0 (and ptr is not NULL), realloc behaves like free(ptr)
     if (size == 0) {
         free(ptr);
         return NULL;
@@ -233,12 +235,16 @@ void *realloc(void *ptr, size_t size) {
     
     // Case 1: Existing block is large enough (no change needed)
     if (current->size >= aligned_size) {
-        // If there's enough leftover space to split a useful new free block, do it.
+        // If there's enough  space to split a useful new free block, do it.
         if (current->size >= aligned_size + PADDED_HEADER_SIZE + ALGN) {
             // Re-use malloc's split logic here to reduce fragmentation.
-            Header *new_block = (Header *)((char *)current + PADDED_HEADER_SIZE + aligned_size);
+            // Separated into two lines to avoid more than 80 characters
+            char *chrptr = (char *)current + PADDED_HEADER_SIZE + aligned_size;
+            Header *new_block = (Header *)chrptr;
             
-            new_block->size = current->size - aligned_size - PADDED_HEADER_SIZE;
+            //separated into two lines to avoid going over 80 chars
+            new_block->size = current->size - aligned_size;
+            new_block->size -= PADDED_HEADER_SIZE;
             new_block->is_free = 1;
             new_block->next = current->next;
             new_block->prev = current;
