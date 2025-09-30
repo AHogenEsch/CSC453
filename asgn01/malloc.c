@@ -3,6 +3,57 @@
 #include <string.h>
 #include <stdint.h>
 #include <stddef.h>
+#include <stdio.h>    // for snprintf, fputs, stderr
+#include <stdlib.h>   // for getenv
+#include <stdarg.h>   // for va_list
+
+// --- Debugging and Logging Infrastructure ---
+#define DEBUG_BUFFER_SIZE 256
+
+static int debug_mode = -1;
+static int logging_in_progress = 0; // Lock to prevent recursion on free(NULL)
+
+
+static int check_debug_mode(void) {
+    if (debug_mode == -1) {
+        // Check environment variable only once
+        if (getenv("DEBUG_MALLOC") != NULL) {
+            debug_mode = 1;
+        } else {
+            debug_mode = 0;
+        }
+    }
+    return debug_mode;
+}
+
+
+static void log_debug(const char *fmt, ...) {
+    if (!check_debug_mode()) {
+        return;
+    }
+
+    // Lock to prevent recursion (e.g., snprintf calling free(NULL))
+    if (logging_in_progress) {
+        return;
+    }
+    logging_in_progress = 1;
+
+    char buffer[DEBUG_BUFFER_SIZE];
+    va_list args;
+
+    va_start(args, fmt);
+    // Use vsnprintf to safely format the string into the fixed buffer
+    vsnprintf(buffer, DEBUG_BUFFER_SIZE, fmt, args);
+    va_end(args);
+
+    // Use fputs to safely write the buffer to stderr
+    fputs(buffer, stderr);
+
+    logging_in_progress = 0;
+}
+
+
+// --- Memory Management Structures and Macros ---
 
 // Used for rounding block sizes to multiples of 16, shortened for brevity
 #define ALGN 16
@@ -13,8 +64,8 @@
 // Add an offset then clear lower bits to get the size of a padded header
 #define PADDED_HEADER_SIZE ((HEADER_SIZE + (ALGN - 1)) & ~(ALGN - 1))
 
-/*  header structure called Header, that contains its size, if free, 
-    and pointers to the next & previous blocks in the linked list of memory */
+/*  header structure called Header, that contains its size, if free, 
+    and pointers to the next & previous blocks in the linked list of memory */
 typedef struct header {
     size_t size;
     int is_free;
@@ -25,7 +76,10 @@ typedef struct header {
 static Header *heap_head = NULL;
 
 
+// --- MALLOC Implementation ---
 void *malloc(size_t size) {
+    size_t requested_size = size; // Save original size for logging
+
     // Handle edge case for a zero-size request.
     if (size == 0) {
         // No, you don't need memory 
@@ -40,10 +94,10 @@ void *malloc(size_t size) {
         
         // Request an initial chunk of memory from the OS.
         const size_t initial_chunk_size = 64 * 1024;
-        size_t request_size =  initial_chunk_size;
+        size_t request_size = initial_chunk_size;
 
         /* Ensure the requested size is at least as large as 
-            the initial chunk size.   */
+            the initial chunk size.   */
         if(PADDED_HEADER_SIZE + size > request_size){
             request_size = PADDED_HEADER_SIZE + size + ALGN;
         }
@@ -71,14 +125,14 @@ void *malloc(size_t size) {
     while (current != NULL) {
         // search for a free block that is large enough.
         if (current->is_free && current->size >= size) {
-            // check if the  space is large enough to create a new free block.
+            // check if the  space is large enough to create a new free block.
             if (current->size >= size + PADDED_HEADER_SIZE + ALGN) {
                 // There's enough space, now split the block.
                 // pointer arithmetic to calculate new block address
                 char *chrptr =(char *)current + PADDED_HEADER_SIZE + size;
                 Header *new_block = (Header *)chrptr;
 
-                // Find the new size using the requested size and the size of a header 
+                // Find the new size using requested size and size of header
                 new_block->size = current->size - size - PADDED_HEADER_SIZE;
                 new_block->is_free = 1;
                 // insert the new block right after the current block
@@ -86,7 +140,7 @@ void *malloc(size_t size) {
                 new_block->prev = current;
                 
                 /*if there is a block after the current one, make sure to let
-                 it know there is a different block before it now */
+                 it know there is a different block before it now */
                 if (current->next != NULL) {
                     current->next->prev = new_block;
                 }
@@ -95,9 +149,14 @@ void *malloc(size_t size) {
                 current->next = new_block;
             }
             
-            // mark the current block as allocated and return the data pointer.
+            // mark current block as allocated and return the data pointer.
             current->is_free = 0;
-            return (void *)((char *)current + PADDED_HEADER_SIZE);
+            void *ptr = (void *)((char *)current + PADDED_HEADER_SIZE);
+            
+            // Debugging Output
+            log_debug("MALLOC: malloc(%zu) => (ptr=%p, size=%zu)\n", 
+                      requested_size, ptr, current->size);
+            return ptr;
         }
         current = current->next;
     }
@@ -124,12 +183,22 @@ void *malloc(size_t size) {
     new_block->prev = last_block;
     last_block->next = new_block;
     
-    return (void *)((char *)new_block + PADDED_HEADER_SIZE);
+    void *ptr = (void *)((char *)new_block + PADDED_HEADER_SIZE);
+    
+    // Debugging Output
+    log_debug("MALLOC: malloc(%zu) => (ptr=%p, size=%zu)\n", 
+              requested_size, ptr, new_block->size);
+    return ptr;
 }
 
+
+// --- FREE Implementation ---
 // Given a pointer to a block of memory (not necessarily the first byte),
 // free that memory
 void free(void *ptr) {
+    // Debugging Output (Logged before the return on NULL)
+    log_debug("MALLOC: free(%p)\n", ptr);
+    
     if (ptr == NULL) {
         return; // Standard behavior for free(NULL)
     }
@@ -186,12 +255,16 @@ void free(void *ptr) {
     }
 
     /* --- Optional: Return memory to OS (Shrinking the heap) ---
-     If the last block in the list is now free, use sbrk(0) to 
+      If the last block in the list is now free, use sbrk(0) to 
     find the current break, and potentially shrink the heap. */
 }
 
 
+// --- CALLOC Implementation ---
 void *calloc(size_t nmemb, size_t size) {
+    size_t requested_nmemb = nmemb; // Save original size for logging
+    size_t requested_size = size;
+
     // Check for size_t overflow before calculating nmemb * size
     // Note: SIZE_MAX is the maximum value for size_t
     if (nmemb > 0 && size > 0 && nmemb > SIZE_MAX / size) {
@@ -201,7 +274,7 @@ void *calloc(size_t nmemb, size_t size) {
 
     size_t total_size = nmemb * size;
 
-    // 1. Allocate the memory using  malloc
+    // 1. Allocate the memory using  malloc
     void *ptr = malloc(total_size);
 
     // 2. If allocation was successful, zero the memory using memset
@@ -209,41 +282,52 @@ void *calloc(size_t nmemb, size_t size) {
         memset(ptr, 0, total_size);
     }
 
+    // Debugging Output (Log after allocation and zeroing)
+    if (ptr != NULL) {
+        // ptr points to the data area
+        Header *h = (Header *)((char *)ptr - PADDED_HEADER_SIZE);
+        log_debug("MALLOC: calloc(%zu,%zu) => (ptr=%p, size=%zu)\n", 
+                  requested_nmemb, requested_size, ptr, h->size);
+    }
+    
     // Return the pointer given from malloc
     return ptr;
 }
 
 
+// --- REALLOC Implementation ---
 void *realloc(void *ptr, size_t size) {
-    // Two Edge Cases
-    // 1: If ptr is NULL, realloc behaves like malloc(size)
+    size_t requested_size = size; // Save original size for logging
+
+    // Edge Case 1: If ptr is NULL, realloc behaves like malloc(size)
     if (ptr == NULL) {
+        // Malloc will handle the logging for this path
         return malloc(size);
     }
 
     // 2: If size is 0 (and ptr is not NULL), realloc behaves like free(ptr)
     if (size == 0) {
-        free(ptr);
+        free(ptr); // Free will handle the logging for this path
         return NULL;
     }
 
     // Adjust requested size for alignment (must match malloc's logic)
-    size_t aligned_size = (size + (ALGN - 1)) & ~(ALGN - 1);
+    size_t aSize = (size + (ALGN - 1)) & ~(ALGN - 1);
 
     // Get the header of the existing block
     Header *current = (Header *)((char *)ptr - PADDED_HEADER_SIZE);
     
     // Case 1: Existing block is large enough (no change needed)
-    if (current->size >= aligned_size) {
-        // If there's enough  space to split a useful new free block, do it.
-        if (current->size >= aligned_size + PADDED_HEADER_SIZE + ALGN) {
+    if (current->size >= aSize) {
+        // If there's enough  space to split a useful new free block, do it.
+        if (current->size >= aSize + PADDED_HEADER_SIZE + ALGN) {
             // Re-use malloc's split logic here to reduce fragmentation.
             // Separated into two lines to avoid more than 80 characters
-            char *chrptr = (char *)current + PADDED_HEADER_SIZE + aligned_size;
+            char *chrptr = (char *)current + PADDED_HEADER_SIZE + aSize;
             Header *new_block = (Header *)chrptr;
             
             //separated into two lines to avoid going over 80 chars
-            new_block->size = current->size - aligned_size;
+            new_block->size = current->size - aSize;
             new_block->size -= PADDED_HEADER_SIZE;
             new_block->is_free = 1;
             new_block->next = current->next;
@@ -253,38 +337,58 @@ void *realloc(void *ptr, size_t size) {
                 current->next->prev = new_block;
             }
             
-            current->size = aligned_size;
+            current->size = aSize;
             current->next = new_block;
         }
+        // Debugging Output
+        log_debug("MALLOC: realloc(%p,%zu) => (ptr=%p, size=%zu)\n", 
+                  ptr, requested_size, ptr, current->size);
         return ptr;
     }
 
-    // Case 2: Block is too small, check for in-place expansion by merging next free block
+    // Case 2: Block is too small, check for in-place expansion
+    // looking for adjacent free blocks
     if (current->next != NULL && current->next->is_free) {
         Header *next_block = current->next;
-        size_t merged_size = current->size + PADDED_HEADER_SIZE + next_block->size;
+        size_t msize = current->size + PADDED_HEADER_SIZE + next_block->size;
 
-        if (merged_size >= aligned_size) {
+        if (msize >= aSize) {
             // Perform the merge:
-            current->size = merged_size; // Temporary size includes merged block
+            current->size = msize; // Temporary size includes merged block
 
             current->next = next_block->next;
             if (next_block->next != NULL) {
                 next_block->next->prev = current;
             }
 
-            // After merging, split the excess space if it's large enough (identical logic as above)
-            if (current->size >= aligned_size + PADDED_HEADER_SIZE + ALGN) {
-                // Split logic here (omitted for brevity, as it mirrors the split logic above)
-                // ...
+            // After merging, split the excess space if it's large enough 
+            if (current->size >= aSize + PADDED_HEADER_SIZE + ALGN) {
+                //find pointer for the data after the current block
+                char *chrptr = (char *)current + PADDED_HEADER_SIZE + aSize;
+                Header *new_block = (Header *)chrptr;
+                
+                new_block->size = current->size - aSize;
+                new_block->size -= PADDED_HEADER_SIZE;
+                new_block->is_free = 1;
+                new_block->next = current->next;
+                new_block->prev = current;
+                
+                if (current->next != NULL) {
+                    current->next->prev = new_block;
+                }
+                
+                current->next = new_block;
             }
             
-            current->size = aligned_size; // Final size adjustment
+            current->size = aSize; // Final size adjustment
+            // Debugging Output
+            log_debug("MALLOC: realloc(%p,%zu) => (ptr=%p, size=%zu)\n", 
+                      ptr, requested_size, ptr, current->size);
             return ptr;
         }
     }
 
-    // Case 3: Relocation required (Block is too small, and cannot expand in-place)
+    // Case 3: Relocation required (Block is too small, and cannot expand)
     
     // 1. Allocate new memory
     void *new_ptr = malloc(size); 
@@ -294,13 +398,18 @@ void *realloc(void *ptr, size_t size) {
         return NULL;
     }
 
-    // 3. Copy the data (copy only the size of the *old* block, or the *new* size, whichever is smaller)
-    size_t copy_size = (current->size < aligned_size) ? current->size : aligned_size;
-    memcpy(new_ptr, ptr, copy_size);
+    // 3. Copy the data (copy only the size of the *old* block,
+    // or the *new* size, whichever is smaller)
+    size_t cs = (current->size < aSize) ? current->size : aSize;
+    memcpy(new_ptr, ptr, cs);
 
     // 4. Free the old memory block
     free(ptr);
     
     // 5. Return the new pointer
+    // Debugging Output (Log the final result of the relocation)
+    Header *h = (Header *)((char *)new_ptr - PADDED_HEADER_SIZE);
+    log_debug("MALLOC: realloc(%p,%zu) => (ptr=%p, size=%zu)\n", 
+              ptr, requested_size, new_ptr, h->size);
     return new_ptr;
 }

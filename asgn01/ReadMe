@@ -1,2 +1,5 @@
-Shortened everything down to under 80 characters per line, and
-tried to to keep the readability when shortening comments
+make
+
+
+Shortened some variable names and comments to meet the less than 80 
+chars per line coding standard. 
