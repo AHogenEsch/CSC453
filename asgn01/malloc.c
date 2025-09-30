@@ -1,6 +1,8 @@
 #include <unistd.h>
 #include <errno.h>
 #include <string.h>
+#include <stdint.h>
+#include <stddef.h>
 
 // Used for rounding block sizes to multiples of 16, shortened for brevity
 #define ALGN 16
@@ -198,7 +200,7 @@ void *calloc(size_t nmemb, size_t size) {
 
     size_t total_size = nmemb * size;
 
-    // 1. Allocate the memory using custom malloc
+    // 1. Allocate the memory using  malloc
     void *ptr = malloc(total_size);
 
     // 2. If allocation was successful, zero the memory using memset
@@ -206,12 +208,11 @@ void *calloc(size_t nmemb, size_t size) {
         memset(ptr, 0, total_size);
     }
 
+    // Return the pointer given from malloc
     return ptr;
 }
 
-// -----------------------------------------------------------------------------
-// 3. void *realloc(void *ptr, size_t size)
-// -----------------------------------------------------------------------------
+
 void *realloc(void *ptr, size_t size) {
     // Edge Case 1: If ptr is NULL, realloc behaves like malloc(size)
     if (ptr == NULL) {
