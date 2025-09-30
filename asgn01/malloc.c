@@ -6,7 +6,6 @@
 #include <stdio.h>    // for snprintf, fputs, stderr
 #include <stdlib.h>   // for getenv
 #include <pp.h>
-/*#include <stdarg.h>    for va_list */
 
 // --- Debugging and Logging Infrastructure ---
 #define DEBUG_BUFFER_SIZE 256
@@ -26,32 +25,6 @@ static int check_debug_mode(void) {
     }
     return debug_mode;
 }
-
-/*
-static void log_debug(const char *fmt, ...) {
-    if (!check_debug_mode()) {
-        return;
-    }
-
-    // Lock to prevent recursion (e.g., snprintf calling free(NULL))
-    if (logging_in_progress) {
-        return;
-    }
-    logging_in_progress = 1;
-
-    char buffer[DEBUG_BUFFER_SIZE];
-    va_list args;
-
-    va_start(args, fmt);
-    // Use vsnprintf to safely format the string into the fixed buffer
-    vsnprintf(buffer, DEBUG_BUFFER_SIZE, fmt, args);
-    va_end(args);
-
-    // Use fputs to safely write the buffer to stderr
-    fputs(buffer, stderr);
-
-    logging_in_progress = 0;
-}*/
 
 
 // --- Memory Management Structures and Macros ---
