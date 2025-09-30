@@ -1,0 +1,5 @@
+pipeit.o
+pipeit.c
+pipeit
+outfile
+Makefile
