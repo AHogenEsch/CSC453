@@ -129,7 +129,7 @@ void *malloc(size_t size) {
             // Debugging Output
             /*log_debug("MALLOC: malloc(%zu) => (ptr=%p, size=%zu)\n", 
                       requested_size, ptr, current->size);*/
-            if(check_debug_mode){
+            if(check_debug_mode()){
                 pp(stdout, "MALLOC: malloc(%zu) => (ptr=%p, size=%zu)\n", 
                 requested_size, ptr, current->size);
             }
@@ -165,7 +165,7 @@ void *malloc(size_t size) {
     // Debugging Output
     /*log_debug("MALLOC: malloc(%zu) => (ptr=%p, size=%zu)\n", 
               requested_size, ptr, new_block->size);*/
-    if(check_debug_mode){
+    if(check_debug_mode()){
         pp(stdout, "MALLOC: malloc(%zu) => (ptr=%p, size=%zu)\n", 
         requested_size, ptr, new_block->size);
     }
@@ -179,7 +179,7 @@ void *malloc(size_t size) {
 void free(void *ptr) {
     // Debugging Output (Logged before the return on NULL)
     /*log_debug("MALLOC: free(%p)\n", ptr);*/
-    if(check_debug_mode){
+    if(check_debug_mode()){
         pp(stdout, "MALLOC: free(%p)\n", ptr);
     }
     if (ptr == NULL) {
@@ -271,7 +271,7 @@ void *calloc(size_t nmemb, size_t size) {
         Header *h = (Header *)((char *)ptr - PADDED_HEADER_SIZE);
         /*log_debug("MALLOC: calloc(%zu,%zu) => (ptr=%p, size=%zu)\n", 
                   requested_nmemb, requested_size, ptr, h->size);*/
-        if(check_debug_mode){
+        if(check_debug_mode()){
             pp(stdout, "MALLOC: calloc(%zu,%zu) => (ptr=%p, size=%zu)\n", 
                 requested_nmemb, requested_size, ptr, h->size);
         }
@@ -330,7 +330,7 @@ void *realloc(void *ptr, size_t size) {
         // Debugging Output
         /*log_debug("MALLOC: realloc(%p,%zu) => (ptr=%p, size=%zu)\n", 
                   ptr, requested_size, ptr, current->size);*/
-        if(check_debug_mode){
+        if(check_debug_mode()){
             pp(stdout, "MALLOC: realloc(%p,%zu) => (ptr=%p, size=%zu)\n", 
                   ptr, requested_size, ptr, current->size);
         }
@@ -375,7 +375,7 @@ void *realloc(void *ptr, size_t size) {
             // Debugging Output
             /*log_debug("MALLOC: realloc(%p,%zu) => (ptr=%p, size=%zu)\n", 
                       ptr, requested_size, ptr, current->size);*/
-            if(check_debug_mode){
+            if(check_debug_mode()){
                 pp(stdout, "MALLOC: realloc(%p,%zu) => (ptr=%p, size=%zu)\n", 
                   ptr, requested_size, ptr, current->size);
             }
@@ -406,7 +406,7 @@ void *realloc(void *ptr, size_t size) {
     Header *h = (Header *)((char *)new_ptr - PADDED_HEADER_SIZE);
     /*log_debug("MALLOC: realloc(%p,%zu) => (ptr=%p, size=%zu)\n", 
               ptr, requested_size, new_ptr, h->size);*/
-    if(check_debug_mode){
+    if(check_debug_mode()){
         pp(stdout, "MALLOC: realloc(%p,%zu) => (ptr=%p, size=%zu)\n", 
               ptr, requested_size, new_ptr, h->size);
     }
