@@ -25,15 +25,13 @@ malloc64.o: malloc.c
 
 
 link:
-unix3$ gcc -o hello -I ~pn-cs453/Given/Asgn1/include -L ~pn-cs453/Given/Asgn1/lib64 hello.c -lpp
-
 	LD_LIBRARY_PATH=$(LIB_PATH)
 	export LD_LIBRARY_PATH
 
 debug:
 	DEBUG_MALLOC=1
 	export DEBUG_MALLOC
-	
+
 # Rule to compile the 64-bit test application, linking it against lib64/libmalloc.so
 $(TEST_APP): $(TEST_APP).c lib64/libmalloc.so
 	$(CC) $(CFLAGS) -o $@ $< -Llib64 -lmalloc
