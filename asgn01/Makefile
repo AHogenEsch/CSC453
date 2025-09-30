@@ -21,7 +21,7 @@ malloc32.o: malloc.c
 	$(CC) $(CFLAGS) -m32 -c -o malloc32.o malloc.c
 
 malloc64.o: malloc.c
-	$(CC) $(CFLAGS) -m64 -c -o malloc64.o malloc.c
+	$(CC) $(CFLAGS) -m64 -c -o malloc64.o -I ~pn-cs453/Given/Asgn1/include -L ~pn-cs453/Given/Asgn1/lib64 malloc.c -lpp
 
 
 link:
