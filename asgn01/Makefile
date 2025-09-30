@@ -1,7 +1,7 @@
 CC = gcc
 CFLAGS = -Wall -g -fpic
 TEST_APP = tryme
-LIB_PATH = ./lib64;~pn-cs453/Given/Asgn1/lib64
+LIB_PATH = ./lib64:~pn-cs453/Given/Asgn1/lib64
 
 intel-all: lib/libmalloc.so lib64/libmalloc.so
 
@@ -18,10 +18,10 @@ lib64:
 	mkdir lib64
 
 malloc32.o: malloc.c
-	$(CC) $(CFLAGS) -m32 -c -o malloc32.o malloc.c
+	$(CC) $(CFLAGS) -m32 -c -I ~pn-cs453/Given/Asgn1/include -o malloc32.o malloc.c
 
 malloc64.o: malloc.c
-	$(CC) $(CFLAGS) -m64 -c -o malloc64.o -I ~pn-cs453/Given/Asgn1/include -L ~pn-cs453/Given/Asgn1/lib64 malloc.c -lpp
+	$(CC) $(CFLAGS) -m64 -c -I ~pn-cs453/Given/Asgn1/include -o malloc64.o malloc.c
 
 
 link:
@@ -32,10 +32,11 @@ debug:
 	DEBUG_MALLOC=1
 	export DEBUG_MALLOC
 
+
 # Rule to compile the 64-bit test application, linking it against lib64/libmalloc.so
 $(TEST_APP): $(TEST_APP).c lib64/libmalloc.so
-	$(CC) -o $(TEST_APP) -I ~pn-cs453/Given/Asgn1/include -L ~pn-cs453/Given/Asgn1/lib64 $(TEST_APP).c -lpp
-	$(CC) $(CFLAGS) -o $@ $< -Llib64 -lmalloc
+	$(CC) $(CFLAGS) -o $@ $(TEST_APP).c -Llib64 -lmalloc \
+	-L ~pn-cs453/Given/Asgn1/lib64 -lpp
 	./$(TEST_APP)
 
 # Clean target should also remove test artifacts and disable debug malloc
