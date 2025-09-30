@@ -1,7 +1,10 @@
 To run program:
-1. make or make intel-all
-2. make link -> exports library path
-3. make debug -> sets DEBUG_MALLOC
-4. make clean -> removes all objects and unsets DEBUG_MALLOC
-Shortened some variable names and comments to meet the less than 80 
+1. $ make or make intel-all
+
+2. $ export LD_LIBRARY_PATH=./lib64:~pn-cs453/Given/Asgn1/lib64
+
+3. make tryme builds and runs a simple print
+4. make clean -> removes all objects and libraries
+
+Shortened some variable names and comments to meet the less than 80
 chars per line coding standard. 
