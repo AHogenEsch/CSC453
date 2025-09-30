@@ -11,7 +11,6 @@
 #define DEBUG_BUFFER_SIZE 256
 
 static int debug_mode = -1;
-static int logging_in_progress = 0; // Lock to prevent recursion on free(NULL)
 
 
 static int check_debug_mode(void) {
@@ -332,8 +331,8 @@ void *realloc(void *ptr, size_t size) {
         /*log_debug("MALLOC: realloc(%p,%zu) => (ptr=%p, size=%zu)\n", 
                   ptr, requested_size, ptr, current->size);*/
         if(check_debug_mode){
-            pp(stdout, "MALLOC: calloc(%zu,%zu) => (ptr=%p, size=%zu)\n", 
-              requested_nmemb, requested_size, ptr, h->size);
+            pp(stdout, "MALLOC: realloc(%p,%zu) => (ptr=%p, size=%zu)\n", 
+                  ptr, requested_size, ptr, current->size);
         }
         return ptr;
     }
